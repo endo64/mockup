@@ -101,16 +101,16 @@ base-face!: make face! [
 			1	[size]
 		]
 	]
-	resize:			does [
+	do-draw: does [
+		draw: compose draw-block
+		self/text: ""
+	]
+	resize: does [
 		case/all [
 			size/x < 36 [size/x: 36]
 			size/y < 36 [size/y: 36]
 		]
 		do-draw
-	]
-	do-draw: does [
-		draw: compose draw-block
-		self/text: ""
 	]
 	actors: object [
 		on-alt-down: function [face event] [
@@ -162,7 +162,21 @@ base-face!: make face! [
 	]
 ]
 
-base-table: make base-face! []
+base-table: make base-face! [
+	widget-text: "Table"
+	widget-type: 'table
+	cols: 5
+	rows: 5
+	draw-block:	[
+		pen			(base-color)
+		fill-pen	(base-backcolor - 10.10.10)
+		line-width	2
+		box			2x2 (size - 2x2) 4
+		pen			off
+		fill-pen	(base-color)
+	]
+
+]
 
 base-check: make base-face! [
 	widget-text: "Checkbox"
@@ -345,7 +359,7 @@ win: make face! [
 					event/key = #"^M"
 					selected-face
 				] [
-					? selected-face
+					dump-face selected-face
 				]
 
 				all [
@@ -373,6 +387,7 @@ win: make face! [
 						base-content
 						base-radio
 						base-check
+						base-table
 					] to integer! d [
 						unless widget [exit]
 						widget: make get widget [bind draw-block self]
