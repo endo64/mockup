@@ -382,12 +382,11 @@ win: make face! [
 				event/key = #" " [show win]
 
 				event/key = #"^S" [
-					either img: to-image win [
-						save/as %data.png img 'PNG
-						img: none
-						print "Saved"
-					] [
-						print "Error on converting"
+					if file: request-file/save/filter/file ["*.png" "*.png" "All files" "*.*"] %mockup.png [
+						if img: to-image win [
+							save/as file img 'PNG
+							img: none
+						]
 					]
 				]
 
