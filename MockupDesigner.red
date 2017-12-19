@@ -56,8 +56,29 @@ do-on-wheel: function [face event] [
 	show face
 ]
 
+edit-table: function [] [
+	do-ok: function [face event] [
+		selected-face/cols: to integer! cols/text
+		selected-face/rows: to integer! rows/text
+		selected-face/resize
+		unview
+	]
+	view/flags compose [
+		title "Edit Table"
+		text "Columns"
+		cols: field 20 (form selected-face/cols)
+		return
+		text "Rows"
+		rows: field 20 (form selected-face/rows)
+		return
+		button "OK" :do-ok
+		button "Cancel" [unview]
+		do [self/selected: cols]
+	] [modal]
+]
+
 edit-text: has [fld do-ok] [
-	unless txt: selected-face/widget-text [exit]
+	txt: selected-face/widget-text
 	do-ok: function [face event] [
 		insert clear txt copy fld/text
 		selected-face/resize
@@ -119,7 +140,8 @@ base-face!: make face! [
 			set-grabber-pos face
 			grabber/visible?: true
 			;
-			edit-text
+			;Edit text or table
+			either selected-face/widget-type = 'table [edit-table] [if selected-face/widget-text [edit-text]]
 			'done
 		]
 		on-down: function [face event] [
@@ -165,17 +187,29 @@ base-face!: make face! [
 base-table: make base-face! [
 	widget-text: "Table"
 	widget-type: 'table
-	cols: 5
+	cols: 6
 	rows: 5
+	size: default-size * 2x4
 	draw-block:	[
 		pen			(base-color)
 		fill-pen	(base-backcolor - 10.10.10)
 		line-width	2
 		box			2x2 (size - 2x2) 4
-		pen			off
-		fill-pen	(base-color)
+		line-width	1
+		pos: 
 	]
-
+	resize: function [] [
+		pos: clear find/tail draw-block [pos:]
+		step: size/x / cols
+		repeat x cols - 1 [
+			append draw-block compose [line (as-pair x * step  2) (as-pair x * step  size/y - 2)]
+		]
+		step: size/y / rows
+		repeat y rows - 1 [
+			append draw-block compose [line (as-pair 2  y * step) (as-pair size/x - 2  y * step)]
+		]
+		do-draw
+	]
 ]
 
 base-check: make base-face! [
@@ -347,12 +381,14 @@ win: make face! [
 				event/key = #"^[" [unview]
 				event/key = #" " [show win]
 
-				;TODO: CTRL-S save doesn't work with window face yet
-				all [
-					event/key = #"S"
-					event/ctrl?
-				] [
-					print "not implemented yet"
+				event/key = #"^S" [
+					either img: to-image win [
+						save/as %data.png img 'PNG
+						img: none
+						print "Saved"
+					] [
+						print "Error on converting"
+					]
 				]
 
 				all [
