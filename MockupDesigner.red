@@ -9,8 +9,12 @@ Red [
 ;add save as png
 ;add save project
 ;add table/grid
+;add image widget (paste from clipboard)
+;add line widget
+;add scale/dpi support to all widgets
 
 system/view/auto-sync?: false
+scale: 96.0 / system/view/metrics/dpi
 
 digit:			charset [#"0" - #"9"]
 base-color:		68.68.68
@@ -60,16 +64,23 @@ edit-table: function [] [
 	do-ok: function [face event] [
 		selected-face/cols: to integer! cols/text
 		selected-face/rows: to integer! rows/text
+		append clear selected-face/texts split area-headers/text newline
 		selected-face/resize
 		unview
+	]
+	txt: copy ""
+	foreach text selected-face/texts [
+		append txt rejoin [text newline]
 	]
 	view/flags compose [
 		title "Edit Table"
 		text "Columns"
 		cols: field 20 (form selected-face/cols)
-		return
-		text "Rows"
+		text "Rows" right
 		rows: field 20 (form selected-face/rows)
+		return
+		text "Headers"
+		area-headers: area txt
 		return
 		button "OK" :do-ok
 		button "Cancel" [unview]
@@ -198,15 +209,20 @@ base-table: make base-face! [
 		line-width	1
 		pos: 
 	]
+	texts: []
+	repeat col cols [append texts rejoin ["Column " col]]
 	resize: function [] [
 		pos: clear find/tail draw-block [pos:]
-		step: size/x / cols
-		repeat x cols - 1 [
-			append draw-block compose [line (as-pair x * step  2) (as-pair x * step  size/y - 2)]
+		step-x: size/x / cols
+		step-y: size/y / rows
+		repeat x cols [
+			append draw-block compose [line (as-pair x * step-x  2) (as-pair x * step-x  size/y - 2)]
+			append draw-block compose [
+				text (as-pair x - 1 * step-x + 2 4) (form any [texts/:x ""])
+			]
 		]
-		step: size/y / rows
 		repeat y rows - 1 [
-			append draw-block compose [line (as-pair 2  y * step) (as-pair size/x - 2  y * step)]
+			append draw-block compose [line (as-pair 2  y * step-y) (as-pair size/x - 2  y * step-y)]
 		]
 		do-draw
 	]
@@ -239,7 +255,7 @@ base-combo: make base-face! [
 		fill-pen	(base-backcolor - 10.10.10)
 		line-width	2
 		box			2x2 (size - 2x2) 4
-		text		12x10 (widget-text)
+		text		(as-pair scale * 12 scale * 10) (widget-text)
 		pen			off
 		fill-pen	(base-color)
 		triangle	(as-pair size/x - 36 10) (as-pair size/x - 16 10) (as-pair size/x - 26 26)
@@ -271,7 +287,7 @@ base-content: make base-face! [
 	draw-block:	[
 		pen			(base-color)
 		fill-pen	(base-backcolor + 20.20.20)
-		box			2x2 (self/size - 2x2)
+		box			2x2 (self/size - 2x2) 1
 		line		2x2 (size - 2x2)
 		line		(as-pair size/x - 2 2) (as-pair 2 size/y - 2)
 	]
@@ -299,7 +315,7 @@ base-field: make base-face! [
 		fill-pen	(base-backcolor - 10.10.10)
 		line-width	2
 		text		0x0	(widget-text)
-		box			(as-pair 2 get-text-size/y + 1) (size - 5x5) 4
+		box			(as-pair 2 get-text-size/y + 1) (size - 2x2) 4
 	]
 ]
 
@@ -394,7 +410,7 @@ win: make face! [
 					event/key = #"^M"
 					selected-face
 				] [
-					dump-face selected-face
+					? selected-face/draw-block
 				]
 
 				all [
