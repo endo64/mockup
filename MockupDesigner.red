@@ -265,16 +265,16 @@ base-combo: make base-face! [
 base-radio: make base-face! [
 	widget-text: "Radiobox"
 	widget-type: 'radiobox
-	resize:		does [size: 48x0 + get-text-size do-draw]
+	resize:		does [size: 48x2 + get-text-size do-draw]
 	checked:	[
-		circle		10x8 4
+		circle		10x12 4
 	]
 	draw-block: [
 		pen			(base-color)
 		text		24x2 (widget-text)
 		fill-pen	(base-backcolor)
 		line-width	2
-		circle		10x8 8
+		circle		10x12 8
 		pen			off
 		fill-pen	(base-color)
 		(checked)
