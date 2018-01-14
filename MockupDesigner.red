@@ -6,9 +6,8 @@ Red [
 ]
 
 ;TODO:
-;add save as png
 ;add save project
-;add table/grid
+;add load project
 ;add image widget (paste from clipboard)
 ;add line widget
 ;add scale/dpi support to all widgets
@@ -296,7 +295,7 @@ base-content: make base-face! [
 base-label: make base-face! [
 	widget-text: "Label"
 	widget-type: 'label
-	resize: does [size: get-text-size do-draw]
+	resize: does [size: 10x0 + get-text-size do-draw]
 	draw-block: [
 		pen			off
 		fill-pen	(base-backcolor - 0.0.1)	;draw a non-transparent box to be able to drag
@@ -397,13 +396,29 @@ win: make face! [
 				event/key = #"^[" [unview]
 				event/key = #" " [show win]
 
-				event/key = #"^S" [
+				all [
+					event/key = #"^S"
+					event/shift?
+				] [
 					if file: request-file/save/filter/file ["*.png" "*.png" "All files" "*.*"] %mockup.png [
+						;hide grabber
+						set 'selected-face none
+						grabber/visible?: false
+						show face
+						
+						;save window image to file
 						if img: to-image win [
 							save/as file img 'PNG
 							img: none
 						]
 					]
+				]
+
+				all [
+					event/key = #"?"
+					selected-face
+				] [
+					dump-face selected-face
 				]
 
 				all [
@@ -441,12 +456,10 @@ win: make face! [
 						base-table
 					] to integer! d [
 						unless widget [exit]
-						widget: make get widget [bind draw-block self]
-						;Apply counter
-						if counter: find/tail counters widget/widget-type [
-							append widget/widget-text make string! reduce [" " counter/1]
-							change counter counter/1 + 1
-						]
+						;widget: make get widget [bind draw-block self]
+
+						widget: make-widget :widget
+
 						widget/resize
 						either selected-face [
 							widget/offset: selected-face/offset + as-pair 0 selected-face/size/y + snap-size/y
@@ -471,5 +484,39 @@ win: make face! [
 	]
 ]
 
-view win
+make-widget: function ['widget] [
+	widget: make get widget [bind draw-block self]
+	;Apply counter
+	if counter: find/tail counters widget/widget-type [
+		append widget/widget-text make string! reduce [" " counter/1]
+		change counter counter/1 + 1
+	]
+	widget
+]
+
+project: load %mock.red
+parse project [
+	some [
+		[
+			set wid 'table set pos pair! set rc pair! set headers string! |
+			set wid word! set text string! set pos pair! 
+		] (
+			either wid = 'table [
+				widget: make base-table [rows: rc/1 cols: rc/2 ]
+				widget/texts: split headers newline
+			] [
+				widget: make-widget (to word! rejoin ["base-" form wid])
+				widget/widget-text: text
+			]
+			widget/resize
+			widget/do-draw
+			widget/offset: pos
+			insert back tail win/pane widget
+		)
+	]
+]
+
+view/no-wait win
+
+do-events
 quit
