@@ -7,10 +7,10 @@ Red [
 
 ;TODO:
 ;add save project
-;add load project
 ;add image widget (paste from clipboard)
 ;add line widget
 ;add scale/dpi support to all widgets
+;select & move/delete multiple/all widgets
 
 system/view/auto-sync?: false
 scale: 96.0 / system/view/metrics/dpi
@@ -396,6 +396,47 @@ win: make face! [
 				event/key = #"^[" [unview]
 				event/key = #" " [show win]
 
+				;
+				; Load project
+				;
+				event/key = #"^L" [
+					if file: request-file [
+						project: load file
+						parse project [
+							some [
+								[
+									set wid 'table set pos pair! set rc pair! set sz pair! set headers string! |
+									set wid word! set txt string! set pos pair! set sz pair!
+								] (
+									either wid = 'table [
+										widget: make base-table [rows: rc/1 cols: rc/2 ]
+										widget/texts: split headers newline
+									] [
+										widget: make-widget (to word! rejoin ["base-" form wid])
+										widget/widget-text: txt
+									]
+									widget/size: sz
+									widget/resize
+									widget/do-draw
+									widget/offset: pos
+									insert back tail win/pane widget
+								)
+							]
+						]
+						show win
+					]
+				]
+
+				;
+				; Save project
+				;
+				event/key = #"^S" [
+					
+				]
+
+				;
+				; Save as PNG
+				;
 				all [
 					event/key = #"^S"
 					event/shift?
@@ -492,28 +533,6 @@ make-widget: function ['widget] [
 		change counter counter/1 + 1
 	]
 	widget
-]
-
-project: load %mock.red
-parse project [
-	some [
-		[
-			set wid 'table set pos pair! set rc pair! set headers string! |
-			set wid word! set text string! set pos pair! 
-		] (
-			either wid = 'table [
-				widget: make base-table [rows: rc/1 cols: rc/2 ]
-				widget/texts: split headers newline
-			] [
-				widget: make-widget (to word! rejoin ["base-" form wid])
-				widget/widget-text: text
-			]
-			widget/resize
-			widget/do-draw
-			widget/offset: pos
-			insert back tail win/pane widget
-		)
-	]
 ]
 
 view/no-wait win
