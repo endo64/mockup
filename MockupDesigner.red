@@ -434,6 +434,27 @@ win: make face! [
 				]
 
 				;
+				; Save as PNG
+				;
+				all [
+					event/key = #"^S"
+					event/shift?
+				] [
+					if file: request-file/save/filter/file ["*.png" "*.png" "All files" "*.*"] %mockup.png [
+						;hide grabber
+						set 'selected-face none
+						grabber/visible?: false
+						show face
+
+						;save window image to file
+						if img: to-image win [
+							save/as file img 'PNG
+							img: none
+						]
+					]
+				]
+
+				;
 				; Save project
 				;
 				event/key = #"^S" [
@@ -465,27 +486,6 @@ win: make face! [
 							title:	"Mockup Designer Project File"
 							date:	(now)
 							author:	(any [get-env "USERNAME" ""])
-						]
-					]
-				]
-
-				;
-				; Save as PNG
-				;
-				all [
-					event/key = #"^S"
-					event/shift?
-				] [
-					if file: request-file/save/filter/file ["*.png" "*.png" "All files" "*.*"] %mockup.png [
-						;hide grabber
-						set 'selected-face none
-						grabber/visible?: false
-						show face
-
-						;save window image to file
-						if img: to-image win [
-							save/as file img 'PNG
-							img: none
 						]
 					]
 				]
