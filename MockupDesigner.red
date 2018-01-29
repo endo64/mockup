@@ -408,6 +408,7 @@ win: make face! [
 					if file: request-file/file %mockup.red [
 						project: load file
 						parse project [
+							opt ['Red block!]
 							some [
 								[
 									set wid 'table	set headers string!	set pos pair! set sz pair! set rc pair! |
@@ -460,7 +461,11 @@ win: make face! [
 						parse project [
 							some [pos: word! (new-line pos true) | skip]
 						]
-						save file project
+						save/header file project compose [
+							title:	"Mockup Designer Project File"
+							date:	(now)
+							author:	(any [get-env "USERNAME" ""])
+						]
 					]
 				]
 
