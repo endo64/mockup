@@ -5,14 +5,6 @@ Red [
 	Date:	2017-11-20
 ]
 
-;TODO:
-;add save as png
-;add save project
-;add table/grid
-;add image widget (paste from clipboard)
-;add line widget
-;add scale/dpi support to all widgets
-
 system/view/auto-sync?: false
 scale: 96.0 / system/view/metrics/dpi
 
@@ -29,17 +21,27 @@ default-font:	make font! [
 	anti-alias?:	true
 ]
 counters: [
-	button		1
-	checkbox	1
-	radiobox	1
-	label		1
-	combobox	1
-	field		1
+	button	1
+	check	1
+	radio	1
+	label	1
+	combo	1
+	field	1
+]
+merge: function ["Merge block" b [block!] /with c /quot] [
+	c: any [c ","]
+	if quot [c: rejoin ["'" c "'"]]
+	s: copy ""
+    s: head clear skip foreach v b [insert tail s rejoin [form v c]] negate length? c
+    if quot [
+        s: rejoin ["'" s "'"]
+    ]
+    s
 ]
 set-grabber-pos: function [face] [
 	;move find/same win/pane grabber tail win/pane	;this is necessary for ctrl-click (bring to front)	;BUG! widget sticks!
 	grabber/offset: face/offset + face/size - (grabber/size / 2)
-	either find [checkbox radiobox label] face/widget-type [
+	either find [check radio label] face/widget-type [
 		grabber/color: red
 	] [
 		grabber/color: green
@@ -207,7 +209,7 @@ base-table: make base-face! [
 		line-width	2
 		box			2x2 (size - 2x2) 4
 		line-width	1
-		pos: 
+		pos:
 	]
 	texts: []
 	repeat col cols [append texts rejoin ["Column " col]]
@@ -229,8 +231,8 @@ base-table: make base-face! [
 ]
 
 base-check: make base-face! [
-	widget-text: "Checkbox"
-	widget-type: 'checkbox
+	widget-text: "Check"
+	widget-type: 'check
 	resize:		does [size: 54x0 + get-text-size do-draw]
 	checked:	[
 		line		6x8 10x12
@@ -247,8 +249,8 @@ base-check: make base-face! [
 ]
 
 base-combo: make base-face! [
-	widget-text: "Combobox"
-	widget-type: 'combobox
+	widget-text: "Combo"
+	widget-type: 'combo
 	resize:		does [size: as-pair max 120 size/x 36 do-draw]
 	draw-block: [
 		pen			(base-color)
@@ -263,8 +265,8 @@ base-combo: make base-face! [
 ]
 
 base-radio: make base-face! [
-	widget-text: "Radiobox"
-	widget-type: 'radiobox
+	widget-text: "Radio"
+	widget-type: 'radio
 	resize:		does [size: 48x2 + get-text-size do-draw]
 	checked:	[
 		circle		10x12 4
@@ -283,6 +285,7 @@ base-radio: make base-face! [
 
 base-content: make base-face! [
 	widget-type: 'content
+	widget-text: "Content"
 	size: default-size * 1x4
 	draw-block:	[
 		pen			(base-color)
@@ -296,7 +299,7 @@ base-content: make base-face! [
 base-label: make base-face! [
 	widget-text: "Label"
 	widget-type: 'label
-	resize: does [size: get-text-size do-draw]
+	resize: does [size: 10x0 + get-text-size do-draw]
 	draw-block: [
 		pen			off
 		fill-pen	(base-backcolor - 0.0.1)	;draw a non-transparent box to be able to drag
@@ -340,6 +343,7 @@ grabber: make face! [
 	offset:		0x0
 	color:		orange
 	options:	[drag-on: 'down]
+	widget-type: none
 	actors: object [
 		on-drag: function [face event] [
 			unless selected-face [exit]
@@ -397,13 +401,100 @@ win: make face! [
 				event/key = #"^[" [unview]
 				event/key = #" " [show win]
 
+				;
+				; Load project
+				;
+				event/key = #"^L" [
+					if file: request-file/file %mockup.red [
+						project: load file
+						parse project [
+							opt ['Red block!]
+							some [
+								[
+									set wid 'table	set headers string!	set pos pair! set sz pair! set rc pair! |
+									set wid word!	set txt string!		set pos pair! set sz pair!
+								] (
+									either wid = 'table [
+										widget: make base-table [rows: rc/1 cols: rc/2 ]	;Rows x Cols
+										widget/texts: split headers newline
+									] [
+										widget: make-widget (to word! rejoin ["base-" form wid])
+										widget/widget-text: txt
+									]
+									widget/size: sz
+									widget/resize
+									widget/do-draw
+									widget/offset: pos
+									insert back tail win/pane widget
+								)
+							]
+						]
+						show win
+					]
+				]
+
+				;
+				; Save project
+				;
 				event/key = #"^S" [
+					project: make block! 1024
+					foreach widget win/pane [
+						if widget/widget-type [
+							if widget/widget-type = 'table [
+								insert clear widget/widget-text merge/with widget/texts "^/"
+							]
+							append project reduce [
+								widget/widget-type
+								widget/widget-text
+								widget/offset
+								widget/size
+							]
+							if widget/widget-type = 'table [
+								append project as-pair widget/rows widget/cols
+							]
+						]
+					]
+					if all [
+						not empty? project
+						file: request-file/save/filter/file ["*.red" "*.red" "All files" "*.*"] %mockup.red
+					] [
+						parse project [
+							some [pos: word! (new-line pos true) | skip]
+						]
+						save/header file project compose [
+							title:	"Mockup Designer Project File"
+							date:	(now)
+							author:	(any [get-env "USERNAME" ""])
+						]
+					]
+				]
+
+				;
+				; Save as PNG
+				;
+				all [
+					event/key = #"^S"
+					event/shift?
+				] [
 					if file: request-file/save/filter/file ["*.png" "*.png" "All files" "*.*"] %mockup.png [
+						;hide grabber
+						set 'selected-face none
+						grabber/visible?: false
+						show face
+
+						;save window image to file
 						if img: to-image win [
 							save/as file img 'PNG
 							img: none
 						]
 					]
+				]
+
+				all [
+					event/key = #"?"
+					selected-face
+				] [
+					dump-face selected-face
 				]
 
 				all [
@@ -441,12 +532,10 @@ win: make face! [
 						base-table
 					] to integer! d [
 						unless widget [exit]
-						widget: make get widget [bind draw-block self]
-						;Apply counter
-						if counter: find/tail counters widget/widget-type [
-							append widget/widget-text make string! reduce [" " counter/1]
-							change counter counter/1 + 1
-						]
+						;widget: make get widget [bind draw-block self]
+
+						widget: make-widget :widget
+
 						widget/resize
 						either selected-face [
 							widget/offset: selected-face/offset + as-pair 0 selected-face/size/y + snap-size/y
@@ -471,5 +560,17 @@ win: make face! [
 	]
 ]
 
-view win
+make-widget: function ['widget] [
+	widget: make get widget [bind draw-block self]
+	;Apply counter
+	if counter: find/tail counters widget/widget-type [
+		append widget/widget-text make string! reduce [" " counter/1]
+		change counter counter/1 + 1
+	]
+	widget
+]
+
+view/no-wait win
+
+do-events
 quit
