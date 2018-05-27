@@ -136,7 +136,7 @@ base-face!: make face! [
 		]
 	]
 	do-draw: does [
-		draw: compose draw-block
+		draw: compose bind draw-block self
 		self/text: ""
 	]
 	resize: does [
@@ -213,7 +213,9 @@ base-table: make base-face! [
 	]
 	texts: []
 	repeat col cols [append texts rejoin ["Column " col]]
+	resize*: :resize	;base resize
 	resize: function [] [
+		resize*
 		pos: clear find/tail draw-block [pos:]
 		step-x: size/x / cols
 		step-y: size/y / rows
@@ -418,7 +420,7 @@ win: make face! [
 										widget: make base-table [rows: rc/1 cols: rc/2 ]	;Rows x Cols
 										widget/texts: split headers newline
 									] [
-										widget: make-widget (to word! rejoin ["base-" form wid])
+										widget: make-widget get (to word! rejoin ["base-" form wid])
 										widget/widget-text: txt
 									]
 									widget/size: sz
@@ -501,7 +503,23 @@ win: make face! [
 					event/key = #"^M"
 					selected-face
 				] [
-					? selected-face/draw-block
+					;? selected-face/draw-block
+					if selected-face [
+						widget: make-widget selected-face [color: red]
+						;widget: make-widget base-button
+						widget/resize
+						widget/offset: random 100x100
+						add-widget widget
+						;insert back tail win/pane widget
+						;show win
+						;probe length? win/pane
+						exit
+						widget/resize
+						probe same? widget selected-face
+						widget/text: form random 1000
+						widget/offset: selected-face/offset + 40x40
+						add-widget widget
+					]
 				]
 
 				all [
@@ -534,7 +552,7 @@ win: make face! [
 						unless widget [exit]
 						;widget: make get widget [bind draw-block self]
 
-						widget: make-widget :widget
+						widget: make-widget get widget
 
 						widget/resize
 						either selected-face [
@@ -547,11 +565,7 @@ win: make face! [
 							widget/offset: random 100x100
 						]
 						snap-to-grid widget
-						set 'selected-face :widget
-						insert back tail win/pane widget
-						show win	;TODO: this prevets crash, remove when fixed
-						move find/same win/pane grabber tail win/pane
-						show win
+						add-widget widget
 					]
 				]
 			]
@@ -560,8 +574,15 @@ win: make face! [
 	]
 ]
 
-make-widget: function ['widget] [
-	widget: make get widget [bind draw-block self]
+add-widget: function [widget] [
+	set 'selected-face :widget
+	insert back tail win/pane widget
+	move find/same win/pane grabber tail win/pane
+	show win
+]
+
+make-widget: function [widget] [
+	widget: make widget [draw-block widget ]
 	;Apply counter
 	if counter: find/tail counters widget/widget-type [
 		append widget/widget-text make string! reduce [" " counter/1]
