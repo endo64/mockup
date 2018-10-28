@@ -319,7 +319,7 @@ base-field: make base-face! [
 		fill-pen	(base-backcolor - 10.10.10)
 		line-width	2
 		text		0x0	(widget-text)
-		box			(as-pair 2 get-text-size/y + 1) (size - 2x2) 4
+		box			(as-pair 2 get-text-size/y) (size - 2x6) 4
 	]
 ]
 
