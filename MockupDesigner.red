@@ -2,7 +2,7 @@ Red [
 	Title:	"Mockup Designer"
 	Author:	"Semseddin (Endo64) Moldibi"
 	Needs:	View
-	Date:	2017-11-20
+	Date:	2018-10-28
 ]
 
 system/view/auto-sync?: false
@@ -126,6 +126,7 @@ base-face!: make face! [
 	options:		[drag-on: 'down]
 	font:			default-font
 	draw-block:		[]
+	widget-type:	none
 	widget-text:	none
 	get-text-size:	function [/x /y] [
 		size: size-text/with self pick reduce ["WWW" widget-text] empty? widget-text
@@ -148,7 +149,7 @@ base-face!: make face! [
 	]
 	actors: object [
 		on-alt-down: function [face event] [
-			;TODO: aşağıdaki ifadeyi tek fonksiyonda topla
+			;TODO: optimize here
 			set 'selected-face :face
 			set-grabber-pos face
 			grabber/visible?: true
@@ -162,7 +163,7 @@ base-face!: make face! [
 			set 'selected-face :face
 			win/selected: :face
 			if event/ctrl? [
-				move find/same win/pane face either event/shift? [win/pane] [back back tail win/pane]	;Why 2 back?
+				move find/same win/pane face either event/shift? [win/pane] [back back tail win/pane]	;Why need 2 back?
 				show win
 			]
 			if all [
@@ -246,7 +247,6 @@ base-check: make base-face! [
 		line-width	2
 		box			2x2 18x16 2
 		text		24x2 (widget-text)
-		(checked)
 	]
 ]
 
@@ -271,17 +271,16 @@ base-radio: make base-face! [
 	widget-type: 'radio
 	resize:		does [size: 48x2 + get-text-size do-draw]
 	checked:	[
-		circle		10x12 4
+		circle		10x10 4
 	]
 	draw-block: [
 		pen			(base-color)
-		text		24x2 (widget-text)
+		text		24x4 (widget-text)
 		fill-pen	(base-backcolor)
 		line-width	2
-		circle		10x12 8
+		circle		10x10 8
 		pen			off
 		fill-pen	(base-color)
-		(checked)
 	]
 ]
 
@@ -358,7 +357,7 @@ grabber: make face! [
 			snap-to-grid selected-face
 			show selected-face
 		]
-		on-drop: function [face event] [set-grabber-pos selected-face]
+		on-drop: function [face event] [all [selected-face set-grabber-pos selected-face]]
 		on-down: function [face event] ['done]
 	]
 ]
@@ -377,27 +376,40 @@ win: make face! [
 			]
 		]
 		on-down: function [face event] [
-			if selected-face [
-				;unselect
-				set 'selected-face none
-				grabber/visible?: false
-				show grabber
-			]
+			;unselect
+			set 'selected-face none
+			grabber/visible?: false
+			show grabber
 		]
 		on-key: function [face event] [
 			case [
+				event/key = 'F2 [
+					if selected-face [
+						either selected-face/widget-type = 'table [edit-table] [if selected-face/widget-text [edit-text]]
+					]
+				]
 				event/key = 'delete [
 					either event/shift? [
-						append clear win/pane grabber
+						grabber/visible?: false
+						;append clear win/pane grabber		;BUG: This makes grabber visible!
+						remove-each face win/pane [
+							not grabber = face
+						]
+						set 'selected-face none
 					] [
 						if selected-face [
-							remove find/same win/pane selected-face
+							remove pos: find/same win/pane selected-face
+							widget: first back pos
+							either widget = grabber [
+								set 'selected-face none
+								grabber/visible?: false
+							] [
+								set 'selected-face widget
+								set-grabber-pos widget
+							]
 						]
 					]
-					set 'selected-face none
-					grabber/visible?: false
-					show face
-					exit
+					show win
 				]
 
 				event/key = #"^[" [unview]
@@ -412,13 +424,26 @@ win: make face! [
 						parse project [
 							opt ['Red block!]
 							some [
+								(checked?: false)
 								[
-									set wid 'table	set headers string!	set pos pair! set sz pair! set rc pair! |
-									set wid word!	set txt string!		set pos pair! set sz pair!
+									set wid ['radio | 'check] set txt string! set pos pair! set sz pair! opt set checked? 'checked
+									|
+									set wid 'table set headers string! set pos pair! set sz pair! set rc pair!
+									|
+									set wid word! set txt string! set pos pair! set sz pair!
 								] (
-									either wid = 'table [
-										widget: make base-table [rows: rc/1 cols: rc/2 ]	;Rows x Cols
-										widget/texts: split headers newline
+									switch/default wid [
+										table [
+											widget: make base-table [rows: rc/1 cols: rc/2 ]	;Rows x Cols
+											widget/texts: split headers newline
+										]
+										radio check [
+											widget: make-widget get (to word! rejoin ["base-" form wid])
+											widget/widget-text: txt
+											if checked? [
+												append/only widget/draw-block quote (checked)
+											]
+										]
 									] [
 										widget: make-widget get (to word! rejoin ["base-" form wid])
 										widget/widget-text: txt
@@ -460,6 +485,7 @@ win: make face! [
 				; Save project
 				;
 				event/key = #"^S" [
+					;TODO: Optimize/standardize project file format
 					project: make block! 1024
 					foreach widget win/pane [
 						if widget/widget-type [
@@ -475,6 +501,12 @@ win: make face! [
 							if widget/widget-type = 'table [
 								append project as-pair widget/rows widget/cols
 							]
+							if all [
+								find [radio check] widget/widget-type
+								find/only widget/draw-block quote (checked)
+							] [
+								append project 'checked
+							]
 						]
 					]
 					if all [
@@ -482,43 +514,13 @@ win: make face! [
 						file: request-file/save/filter/file ["*.red" "*.red" "All files" "*.*"] %mockup.red
 					] [
 						parse project [
-							some [pos: word! (new-line pos true) | skip]
+							some [pos: not 'checked word! (new-line pos true) | skip]
 						]
 						save/header file project compose [
 							title:	"Mockup Designer Project File"
 							date:	(now)
 							author:	(any [get-env "USERNAME" ""])
 						]
-					]
-				]
-
-				all [
-					event/key = #"?"
-					selected-face
-				] [
-					dump-face selected-face
-				]
-
-				all [
-					event/key = #"^M"
-					selected-face
-				] [
-					;? selected-face/draw-block
-					if selected-face [
-						widget: make-widget selected-face [color: red]
-						;widget: make-widget base-button
-						widget/resize
-						widget/offset: random 100x100
-						add-widget widget
-						;insert back tail win/pane widget
-						;show win
-						;probe length? win/pane
-						exit
-						widget/resize
-						probe same? widget selected-face
-						widget/text: form random 1000
-						widget/offset: selected-face/offset + 40x40
-						add-widget widget
 					]
 				]
 
