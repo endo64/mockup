@@ -50,7 +50,7 @@ set-grabber-pos: function [face] [
 ]
 snap-to-grid: function [face] [
 	face/offset: face/offset / snap-size * snap-size
-	face/text: ""	;refresh (show doesn't work)
+	face/text: ""	;BUG! refresh (show doesn't work)
 	set-grabber-pos face
 ]
 
