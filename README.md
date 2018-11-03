@@ -6,7 +6,7 @@ You can express your UI design ideas to your customers or development team by dr
 
 Here you can see an example image made with Mockup Designer:
 
-![[Mockup.png]](images/Sample.png)
+![[MockupDesigner]](images/mock.gif)
 
 It's simplicity comes from the programming language used to develop it: https://red-lang.org 
 
