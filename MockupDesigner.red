@@ -75,6 +75,7 @@ edit-table: function [] [
 		append txt rejoin [text newline]
 	]
 	view/flags compose [
+		on-key [if escape = event/key [unview]]
 		title "Edit Table"
 		text "Columns"
 		cols: field 20 (form selected-face/cols)
@@ -100,8 +101,9 @@ edit-text: has [fld do-ok] [
 		unview
 	]
 	view/flags compose [
+		on-key [if escape = event/key [unview]]
 		title "Enter text"
-		fld: field 250 (copy txt) :do-ok on-key [if event/key = #"^[" [unview]]
+		fld: field 250 (copy txt) :do-ok
 		return
 		button "OK" :do-ok
 		button "Cancel" [unview]
@@ -412,7 +414,20 @@ win: make face! [
 					show win
 				]
 
-				event/key = #"^[" [unview]
+				event/key = #"^[" [
+					quit?: no
+					view/flags [
+						on-key [if escape = event/key [unview] exit]
+						title "Confirm"
+						text 200 "Are you sure you want to quit?"
+						return
+						btn: button "OK" [quit?: yes unview]
+						button "Cancel" [unview]
+						do [set-focus btn]
+					] [modal]
+					if quit? [unview]
+				]
+
 				event/key = #" " [show win]
 
 				;
