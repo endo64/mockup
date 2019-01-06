@@ -63,7 +63,7 @@ do-on-wheel: function [face event] [
 ]
 
 edit-table: function [] [
-	do-ok: function [face event] [
+	do-ok: [
 		selected-face/cols: to integer! cols/text
 		selected-face/rows: to integer! rows/text
 		append clear selected-face/texts split area-headers/text newline
@@ -85,7 +85,7 @@ edit-table: function [] [
 		text "Headers"
 		area-headers: area txt
 		return
-		button "OK" :do-ok
+		button "OK" do-ok
 		button "Cancel" [unview]
 		do [self/selected: cols]
 	] [modal]
@@ -93,7 +93,7 @@ edit-table: function [] [
 
 edit-text: has [fld do-ok] [
 	txt: selected-face/widget-text
-	do-ok: function [face event] [
+	do-ok: [
 		insert clear txt copy fld/text
 		selected-face/resize
 		set-grabber-pos selected-face
@@ -419,6 +419,8 @@ win: make face! [
 					view/flags [
 						on-key [if escape = event/key [unview] exit]
 						title "Confirm"
+						text 20 font-size 24 "?"
+						pad 0x20
 						text 200 "Are you sure you want to quit?"
 						return
 						btn: button "OK" [quit?: yes unview]
