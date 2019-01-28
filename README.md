@@ -41,6 +41,7 @@ Press below number keys to create respective widgets.
 * CTRL-S, to save project
 * CTRL-SHIFT-S to save as PNG image
 * F2 (or Right click) to edit widget text
+* D to duplicate selected widget
 * DELETE to delete selected widget
 * SHIFT-DELETE to delete all widgets
 * ESC to quit the program

@@ -66,6 +66,8 @@ edit-table: function [] [
 	do-ok: [
 		selected-face/cols: to integer! cols/text
 		selected-face/rows: to integer! rows/text
+		unless all [positive? selected-face/cols selected-face/cols < 30] [selected-face/cols: 6]
+		unless all [positive? selected-face/rows selected-face/rows < 99] [selected-face/rows: 6]
 		append clear selected-face/texts split area-headers/text newline
 		selected-face/resize
 		unview
@@ -103,9 +105,9 @@ edit-text: has [fld do-ok] [
 	view/flags compose [
 		on-key [if escape = event/key [unview]]
 		title "Enter text"
-		fld: field 250 (copy txt) :do-ok
+		fld: field 250 (copy txt) do-ok
 		return
-		button "OK" :do-ok
+		button "OK" do-ok
 		button "Cancel" [unview]
 		do [self/selected: fld]
 	] [modal]
@@ -385,11 +387,18 @@ win: make face! [
 		]
 		on-key: function [face event] [
 			case [
+				;
+				; F2 - Edit widget's text
+				;
 				event/key = 'F2 [
 					if selected-face [
 						either selected-face/widget-type = 'table [edit-table] [if selected-face/widget-text [edit-text]]
 					]
 				]
+
+				;
+				; Delete selected widget or all widgets (shift-delete)
+				;
 				event/key = 'delete [
 					either event/shift? [
 						grabber/visible?: false
@@ -414,6 +423,9 @@ win: make face! [
 					show win
 				]
 
+				;
+				; Escape - Quit application
+				;
 				event/key = #"^[" [
 					quit?: no
 					view/flags [
@@ -430,6 +442,9 @@ win: make face! [
 					if quit? [unview]
 				]
 
+				;
+				; Space - refresh windows (for debugging)
+				;
 				event/key = #" " [show win]
 
 				;
@@ -541,6 +556,9 @@ win: make face! [
 					]
 				]
 
+				;
+				; Move widget by cursor keys
+				;
 				all [
 					selected-face
 					find [up down left right] event/key
@@ -557,6 +575,9 @@ win: make face! [
 					exit
 				]
 
+				;
+				; Create new widgets by number keys
+				;
 				parse d: form event/key [digit] [
 					if widget: pick [
 						base-label
@@ -575,11 +596,7 @@ win: make face! [
 
 						widget/resize
 						either selected-face [
-							widget/offset: selected-face/offset + as-pair 0 selected-face/size/y + snap-size/y
-							if widget/offset/y > win/size/y [
-								widget/offset/y: win/size/y - widget/size/y
-								widget/offset/x: min widget/offset/x + (3 * snap-size/y) (win/size/x - (3 * snap-size/y))
-							]
+							place-widget widget
 						] [
 							widget/offset: random 100x100
 						]
@@ -587,9 +604,35 @@ win: make face! [
 						add-widget widget
 					]
 				]
+
+				;
+				; Duplicate selected widget
+				;
+				event/key = #"d" [
+					unless selected-face [exit]
+					widget: make-widget get load append copy "base-" selected-face/widget-type
+					widget/size: selected-face/size
+					widget/draw-block: copy/deep selected-face/draw-block
+					if 'table = widget/widget-type [
+						widget/cols: selected-face/cols
+						widget/rows: selected-face/rows
+						widget/texts: copy selected-face/texts
+					]
+					widget/resize
+					place-widget widget
+					snap-to-grid widget
+					add-widget widget
+				]
 			]
-			;show face
-		]
+		] ;on-key
+	] ;actors
+]
+
+place-widget: function [widget] [
+	widget/offset: selected-face/offset + as-pair 0 selected-face/size/y + snap-size/y
+	if widget/offset/y > win/size/y [
+		widget/offset/y: win/size/y - widget/size/y
+		widget/offset/x: min widget/offset/x + (3 * snap-size/y) (win/size/x - (3 * snap-size/y))
 	]
 ]
 
